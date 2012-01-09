@@ -1,5 +1,5 @@
 #
-#
+# 
 #
 #
 
@@ -7,16 +7,16 @@ require 'ptools'
 
 class TreeBuilder
 
-  def initialize(path, args)
+  def initialize(path, keywords = {}, templatePath = "" )
     @templates = []
-    @templatePath = File.expand_path(File.dirname(__FILE__))+"/templates/"
+    @templatePath = (templatePath=="")?File.expand_path(File.dirname(__FILE__))+"/templates/":templatePath
     Dir.foreach(@templatePath) do |filename|
       if File.directory?(@templatePath+filename) && filename!="." && filename!=".."
         @templates.push(filename)
       end
 
     end
-    @path, @args = path, args
+    @path, @keywords = path, keywords
   end
 
   def buildFromTemplate(name, templateName)
@@ -33,8 +33,8 @@ class TreeBuilder
     puts @templates
   end
   
-  private
-
+private
+###             Main crawling functions              ###  
   def safeMakeDir(name, path)
     directoryName = path+name
     if FileTest::directory?(directoryName)
@@ -44,48 +44,44 @@ class TreeBuilder
     Dir::mkdir(directoryName)
     puts "Directory #{name} created"
   end
-
-  def makeDirBranch(branch, path)
-    branch.each do |key, value|
-      safeMakeDir(key, path);
-      if(value.class == Hash) then
-        makeDirBranch(value,path+key+"/")
-      end
-    end
-
-  end
+  
   def buildTreeBranch(path, templatePath)
     Dir.foreach(templatePath) do |filename|
-      next if filename=="." || filename==".."
+      #skip current and parent directory
+      next if filename=="." || filename==".." 
       if File.directory?(templatePath+filename) then
-        # stworz folder i idz wglab
         safeMakeDir(filename, path)
+        # go deeper
         buildTreeBranch(path+filename+"/", templatePath+filename+"/")
       else
         handleFile(templatePath+filename, path+filename)
-        # stworz plik
       end
     end 
-
   end
+  
+###             Files                     ###  
   def handleFile(sourceName, targetName)
     if File.binary?(sourceName)
       copyFile(sourceName, targetName)
     else  
       fillTemplate(sourceName, targetName)
     end
+    
     if File.extname(sourceName) == ".tex"
       system("pdflatex --output-directory "+File.dirname(targetName) +" "+targetName+" > /dev/null")
       system("rm -f "+File.dirname(targetName)+"/{*.aux,*.log}")
     end
   end
+  
   def copyFile(sourceName, targetName)
     source = File.open(sourceName)
     target = File.open(targetName, "w")
     target.write(source.read(64)) while not source.eof?
-    source.close
     target.close
+    source.close
   end
+
+###             Templates                       ###
   def fillTemplate(templateName, outputName)
     output = File.new(outputName, "w")
     input = File.new(templateName)
@@ -95,15 +91,15 @@ class TreeBuilder
       end
       output.puts line
     end
-    output.close
     input.close
+    output.close
   end
 
   def substituteKeywordInLine(line, keyword)
-    if !@args.has_key?(keyword)
+    if !@keywords.has_key?(keyword)
       getNewKeyword(keyword)
     end
-    value = @args[keyword]
+    value = @keywords[keyword]
     puts "Podstawienie dla: #{keyword}"
     return line.sub(/=\+(#{keyword})\+=/, value.to_s)
   end
@@ -112,10 +108,10 @@ class TreeBuilder
     print "Podstawienie za #{keyword}: "
     result = gets.chomp
     if result==""
-      @args[keyword]="=+#{keyword}+="
+      @keywords[keyword]="=+#{keyword}+="
     else
-      @args[keyword]=result
+      @keywords[keyword]=result
     end
-
   end
+  
 end

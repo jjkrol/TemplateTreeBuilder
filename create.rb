@@ -4,7 +4,7 @@ require "./templateTreeBuilder.rb"
 
 
 path = Dir::pwd+"/"
-builder = TreeBuilder.new(path, args)
+builder = TreeBuilder.new(path)
 
 print "Project title: "
 projectName = gets.chomp
